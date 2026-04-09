@@ -1,8 +1,8 @@
 import { CHUNK_SIZE } from "./types.js";
 import { noise2d } from "./noise.js";
-const WATER_THRESHOLD = -0.35;
-const SAND_THRESHOLD = -0.28;
-const NOISE_SCALE = 0.07;
+const WATER_THRESHOLD = -0.2; // ~20% water coverage, matches Factorio default
+const SAND_THRESHOLD = -0.14; // thin sand border around water
+const NOISE_SCALE = 0.06; // slightly larger lakes, less fragmented
 export class World {
     constructor() {
         this.chunks = new Map();
