@@ -10,6 +10,9 @@ const renderer = new Renderer(canvas);
 const minimap = new Minimap();
 let mapOpen = false;
 let lastTime = 0;
+let mouseX = 0;
+let mouseY = 0;
+window.addEventListener("mousemove", (e) => { mouseX = e.clientX; mouseY = e.clientY; });
 function resize() {
     renderer.resize(window.innerWidth, window.innerHeight);
 }
@@ -46,8 +49,10 @@ function gameLoop(timestamp) {
     world.updateVisibility(timestamp);
     renderer.clear();
     renderer.drawWorld(world, player);
+    renderer.drawResources(world, player);
     renderer.drawPlayer(player);
     renderer.drawHUD(player);
+    renderer.drawTooltip(world, player, mouseX, mouseY);
     if (!mapOpen)
         minimap.draw(world, player);
     requestAnimationFrame(gameLoop);

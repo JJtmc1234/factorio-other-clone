@@ -5,6 +5,24 @@ const TILE_COLORS = {
     sand: "#c2a84a",
 };
 const WATER_DARK = "#0f4a63";
+const ORE_COLORS = {
+    iron: "#7ab3d4",
+    copper: "#c87941",
+    coal: "#2a2a2a",
+    stone: "#b5a882",
+};
+function tooltipText(r) {
+    if (r.kind === "ore")
+        return `${r.ore} ore: ${r.amount}`;
+    if (r.kind === "tree")
+        return `Tree: 4 wood`;
+    if (r.kind === "rock") {
+        if (r.coal > 0)
+            return `${r.label}: ${r.stone} stone, ${r.coal} coal`;
+        return `${r.label}: ${r.stone} stone`;
+    }
+    return "";
+}
 export class Renderer {
     constructor(canvas) {
         this.canvas = canvas;
@@ -89,6 +107,74 @@ export class Renderer {
         // Helmet
         ctx.fillStyle = "#c0392b";
         ctx.fillRect(cx - 7, cy - 24, 14, 5);
+    }
+    drawResources(world, player) {
+        const ctx = this.ctx;
+        const camX = player.pixelX - this.width / 2;
+        const camY = player.pixelY - this.height / 2;
+        const startTX = Math.floor(camX / TILE_SIZE) - 1;
+        const startTY = Math.floor(camY / TILE_SIZE) - 1;
+        const endTX = startTX + Math.ceil(this.width / TILE_SIZE) + 2;
+        const endTY = startTY + Math.ceil(this.height / TILE_SIZE) + 2;
+        for (let ty = startTY; ty < endTY; ty++) {
+            for (let tx = startTX; tx < endTX; tx++) {
+                const tile = world.getTile(tx, ty);
+                if (!tile.resource || tile.visibility === "unknown")
+                    continue;
+                const sx = Math.floor(tx * TILE_SIZE - camX);
+                const sy = Math.floor(ty * TILE_SIZE - camY);
+                const r = tile.resource;
+                if (r.kind === "ore") {
+                    ctx.fillStyle = ORE_COLORS[r.ore];
+                    ctx.globalAlpha = 0.75;
+                    ctx.fillRect(sx + 2, sy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                    ctx.globalAlpha = 1;
+                }
+                else if (r.kind === "tree") {
+                    ctx.fillStyle = "#2d5a1b";
+                    ctx.beginPath();
+                    ctx.arc(sx + TILE_SIZE / 2, sy + TILE_SIZE / 2, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = "#3d7a27";
+                    ctx.beginPath();
+                    ctx.arc(sx + TILE_SIZE / 2 - 3, sy + TILE_SIZE / 2 - 3, 7, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                else if (r.kind === "rock") {
+                    ctx.fillStyle = r.label === "Big Sand Rock" ? "#c8b870" : "#888";
+                    ctx.beginPath();
+                    ctx.ellipse(sx + TILE_SIZE / 2, sy + TILE_SIZE / 2 + 2, r.label === "Huge Rock" ? 13 : 9, r.label === "Huge Rock" ? 10 : 7, 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = "#555";
+                    ctx.beginPath();
+                    ctx.ellipse(sx + TILE_SIZE / 2 - 2, sy + TILE_SIZE / 2, r.label === "Huge Rock" ? 8 : 5, r.label === "Huge Rock" ? 6 : 4, -0.2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+    }
+    drawTooltip(world, player, mouseX, mouseY) {
+        const ctx = this.ctx;
+        const camX = player.pixelX - this.width / 2;
+        const camY = player.pixelY - this.height / 2;
+        const tx = Math.floor((mouseX + camX) / TILE_SIZE);
+        const ty = Math.floor((mouseY + camY) / TILE_SIZE);
+        const tile = world.getTile(tx, ty);
+        if (!tile.resource || tile.visibility === "unknown")
+            return;
+        const text = tooltipText(tile.resource);
+        ctx.font = "12px monospace";
+        const w = ctx.measureText(text).width + 16;
+        let bx = mouseX + 12;
+        let by = mouseY - 28;
+        if (bx + w > this.width)
+            bx = mouseX - w - 4;
+        if (by < 0)
+            by = mouseY + 12;
+        ctx.fillStyle = "rgba(20,20,20,0.88)";
+        ctx.fillRect(bx, by, w, 22);
+        ctx.fillStyle = "#fff";
+        ctx.fillText(text, bx + 8, by + 15);
     }
     drawHUD(player) {
         const ctx = this.ctx;

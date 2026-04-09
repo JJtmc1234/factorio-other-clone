@@ -1,5 +1,6 @@
 import { Tile, TileType, TileVisibility, CHUNK_SIZE, CHART_DECAY_MS } from "./types.js";
 import { noise2d } from "./noise.js";
+import { generateResources } from "./resources.js";
 
 const LAKE_CENTER_X = 30;
 const LAKE_CENTER_Y = 20;
@@ -44,6 +45,7 @@ export class World {
         tiles[ty][tx] = { type, visibility: "unknown" };
       }
     }
+    generateResources(tiles, cx, cy);
     return { tiles, lastChartedAt: 0 };
   }
 

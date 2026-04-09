@@ -1,4 +1,5 @@
 import { CHUNK_SIZE, CHART_DECAY_MS } from "./types.js";
+import { generateResources } from "./resources.js";
 const LAKE_CENTER_X = 30;
 const LAKE_CENTER_Y = 20;
 const LAKE_RADIUS = 10;
@@ -37,6 +38,7 @@ export class World {
                 tiles[ty][tx] = { type, visibility: "unknown" };
             }
         }
+        generateResources(tiles, cx, cy);
         return { tiles, lastChartedAt: 0 };
     }
     getChunk(cx, cy) {
