@@ -14,11 +14,12 @@ export class Player {
         });
         window.addEventListener("keyup", (e) => this.keys.delete(e.key));
     }
+    // Hitbox is center of sprite
     get tileX() {
-        return Math.floor(this.state.px / TILE_SIZE);
+        return Math.floor((this.state.px + TILE_SIZE / 2) / TILE_SIZE);
     }
     get tileY() {
-        return Math.floor(this.state.py / TILE_SIZE);
+        return Math.floor((this.state.py + TILE_SIZE / 2) / TILE_SIZE);
     }
     get pixelX() { return this.state.px; }
     get pixelY() { return this.state.py; }
@@ -41,13 +42,36 @@ export class Player {
         }
         const newPx = this.state.px + dx * dist;
         const newPy = this.state.py + dy * dist;
-        // Collision: check target tile
-        const newTx = Math.floor(newPx / TILE_SIZE);
-        const newTy = Math.floor(newPy / TILE_SIZE);
-        if (world.isWalkable(newTx, this.tileY))
-            this.state.px = newPx;
-        if (world.isWalkable(this.tileX, newTy))
-            this.state.py = newPy;
+        // Collision: use center of player for tile lookup
+        const newTx = Math.floor((newPx + TILE_SIZE / 2) / TILE_SIZE);
+        const newTy = Math.floor((newPy + TILE_SIZE / 2) / TILE_SIZE);
+        const curTx = this.tileX;
+        const curTy = this.tileY;
+        // Fix diagonal squeeze: only allow move if target tile AND
+        // the axis-aligned intermediate tile are both walkable
+        const canMoveX = world.isWalkable(newTx, curTy);
+        const canMoveY = world.isWalkable(curTx, newTy);
+        // Prevent diagonal squeeze through two touching water tiles
+        const canMoveBoth = canMoveX && canMoveY && world.isWalkable(newTx, newTy);
+        if (dx !== 0 && dy !== 0) {
+            // Diagonal: require all three checks
+            if (canMoveBoth) {
+                this.state.px = newPx;
+                this.state.py = newPy;
+            }
+            else {
+                if (canMoveX)
+                    this.state.px = newPx;
+                if (canMoveY)
+                    this.state.py = newPy;
+            }
+        }
+        else {
+            if (canMoveX)
+                this.state.px = newPx;
+            if (canMoveY)
+                this.state.py = newPy;
+        }
     }
 }
 //# sourceMappingURL=player.js.map

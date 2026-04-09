@@ -78,10 +78,10 @@ export class Renderer {
         const ctx = this.ctx;
         const cx = this.width / 2;
         const cy = this.height / 2;
-        // Shadow
+        // Shadow — just under the feet (bottom of sprite)
         ctx.fillStyle = "rgba(0,0,0,0.3)";
         ctx.beginPath();
-        ctx.ellipse(cx + 2, cy + TILE_SIZE - 6, 8, 4, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy + 11, 8, 4, 0, 0, Math.PI * 2);
         ctx.fill();
         // Body
         ctx.fillStyle = "#e8a020";
