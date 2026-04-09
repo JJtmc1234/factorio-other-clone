@@ -1,8 +1,8 @@
 import { Tile, TileType, CHUNK_SIZE } from "./types.js";
 import { noise2d } from "./noise.js";
 
-const WATER_THRESHOLD = -0.1;
-const SAND_THRESHOLD = -0.05;
+const WATER_THRESHOLD = -0.35;
+const SAND_THRESHOLD = -0.28;
 const NOISE_SCALE = 0.07;
 
 export class World {
