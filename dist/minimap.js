@@ -45,20 +45,21 @@ export class Minimap {
             this.zoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom * delta));
             this.renderFullMap();
         });
-        // Drag to pan full map
+        // Drag to pan full map — wire to document so drag works outside canvas
         overlay.addEventListener("mousedown", (e) => {
             this.isDragging = true;
             this.dragStartX = e.clientX - this.mapOffsetX;
             this.dragStartY = e.clientY - this.mapOffsetY;
+            e.preventDefault();
         });
-        overlay.addEventListener("mousemove", (e) => {
-            if (!this.isDragging)
+        document.addEventListener("mousemove", (e) => {
+            if (!this.isDragging || !this.isFullMap)
                 return;
             this.mapOffsetX = e.clientX - this.dragStartX;
             this.mapOffsetY = e.clientY - this.dragStartY;
             this.renderFullMap();
         });
-        overlay.addEventListener("mouseup", () => { this.isDragging = false; });
+        document.addEventListener("mouseup", () => { this.isDragging = false; });
     }
     draw(world, player) {
         this._world = world;
@@ -77,19 +78,31 @@ export class Minimap {
                 const sy = (dy + MM_RADIUS) * MM_TILE;
                 if (tile.visibility === "unknown") {
                     ctx.fillStyle = "#000";
-                }
-                else {
-                    ctx.fillStyle = TILE_COLORS[tile.type] ?? "#888";
                     ctx.fillRect(sx, sy, MM_TILE, MM_TILE);
-                    // Fog tint for non-charted
-                    if (tile.visibility === "fog") {
-                        ctx.fillStyle = FOG_TINT;
+                    continue;
+                }
+                ctx.fillStyle = TILE_COLORS[tile.type] ?? "#888";
+                ctx.fillRect(sx, sy, MM_TILE, MM_TILE);
+                // Resource dot (1px)
+                if (tile.resource) {
+                    if (tile.resource.kind === "ore") {
+                        const oc = { iron: "#7ab3d4", copper: "#c87941", coal: "#111", stone: "#b5a882" };
+                        ctx.fillStyle = oc[tile.resource.ore] ?? "#fff";
+                        ctx.fillRect(sx, sy, MM_TILE, MM_TILE);
                     }
-                    else {
-                        ctx.fillStyle = "transparent";
+                    else if (tile.resource.kind === "tree") {
+                        ctx.fillStyle = "#1e3d10";
+                        ctx.fillRect(sx, sy, MM_TILE, MM_TILE);
+                    }
+                    else if (tile.resource.kind === "rock") {
+                        ctx.fillStyle = "#aaa";
+                        ctx.fillRect(sx, sy, MM_TILE, MM_TILE);
                     }
                 }
-                ctx.fillRect(sx, sy, MM_TILE, MM_TILE);
+                if (tile.visibility === "fog") {
+                    ctx.fillStyle = FOG_TINT;
+                    ctx.fillRect(sx, sy, MM_TILE, MM_TILE);
+                }
             }
         }
         // Player dot
@@ -132,6 +145,17 @@ export class Minimap {
                     continue;
                 fctx.fillStyle = TILE_COLORS[tile.type] ?? "#888";
                 fctx.fillRect(sx, sy, FULL_TILE, FULL_TILE);
+                // Resources
+                if (tile.resource) {
+                    const oc = { iron: "#7ab3d4", copper: "#c87941", coal: "#111", stone: "#b5a882" };
+                    if (tile.resource.kind === "ore")
+                        fctx.fillStyle = oc[tile.resource.ore];
+                    else if (tile.resource.kind === "tree")
+                        fctx.fillStyle = "#1e3d10";
+                    else
+                        fctx.fillStyle = "#aaa";
+                    fctx.fillRect(sx, sy, FULL_TILE, FULL_TILE);
+                }
                 if (tile.visibility === "fog") {
                     fctx.fillStyle = FOG_TINT;
                     fctx.fillRect(sx, sy, FULL_TILE, FULL_TILE);
