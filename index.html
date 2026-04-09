@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Factorio Clone v0.1</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: monospace;
+    }
+    #game {
+      display: block;
+      image-rendering: pixelated;
+    }
+    #fullmap-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #fullmap-overlay h2 {
+      color: #fff;
+      font-size: 18px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    #fullmap-canvas {
+      border: 2px solid #555;
+      image-rendering: pixelated;
+      max-width: 90vw;
+      max-height: 80vh;
+    }
+    #fullmap-overlay p {
+      color: #aaa;
+      font-size: 13px;
+    }
+    #controls {
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      color: #aaa;
+      font-size: 12px;
+      line-height: 1.8;
+      background: rgba(0,0,0,0.5);
+      padding: 8px 12px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- Full map overlay -->
+  <div id="fullmap-overlay">
+    <h2>🗺 World Map</h2>
+    <canvas id="fullmap-canvas"></canvas>
+    <p>Press M or ESC to close</p>
+  </div>
+
+  <!-- Controls hint -->
+  <div id="controls">
+    WASD / ↑↓←→ — Move<br>
+    M — Toggle Map<br>
+    ESC — Close Map
+  </div>
+
+  <script type="module" src="dist/main.js"></script>
+</body>
+</html>

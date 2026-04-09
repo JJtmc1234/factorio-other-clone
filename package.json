@@ -1,0 +1,11 @@
+{
+  "name": "factorio-other-clone",
+  "version": "0.1.0",
+  "description": "Cora's Factorio clone - browser game",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
