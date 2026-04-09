@@ -1,37 +1,87 @@
 import { World } from "./world.js";
 import { Player } from "./player.js";
-import { TILE_SIZE } from "./types.js";
 
-const MM_TILE = 3;       // pixels per tile on minimap
-const MM_RADIUS = 40;    // tiles shown in each direction
+const MM_TILE = 2;
+const MM_RADIUS = 60;
 const MM_SIZE = MM_RADIUS * 2 * MM_TILE;
 
-const MINI_COLORS: Record<string, string> = {
+const TILE_COLORS: Record<string, string> = {
   grass: "#4a7c3f",
   water: "#1a6b8a",
   sand:  "#c2a84a",
 };
 
+const FOG_TINT = "rgba(0,0,0,0.55)"; // greyed out fog-of-war overlay
+
 export class Minimap {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
+
+  // Full map state
+  private fullMapCanvas: HTMLCanvasElement;
+  private fullMapCtx: CanvasRenderingContext2D;
   isFullMap: boolean = false;
 
+  // Zoom state
+  private zoom: number = 1;
+  private minZoom: number = 0.5;
+  private maxZoom: number = 4;
+  private mapOffsetX: number = 0;
+  private mapOffsetY: number = 0;
+  private isDragging: boolean = false;
+  private dragStartX: number = 0;
+  private dragStartY: number = 0;
+  private dragOffsetX: number = 0;
+  private dragOffsetY: number = 0;
+
   constructor() {
+    // Minimap
     this.canvas = document.createElement("canvas");
     this.canvas.width = MM_SIZE;
     this.canvas.height = MM_SIZE;
-    this.canvas.style.position = "absolute";
-    this.canvas.style.bottom = "16px";
-    this.canvas.style.right = "16px";
-    this.canvas.style.border = "2px solid #555";
-    this.canvas.style.borderRadius = "4px";
-    this.canvas.style.imageRendering = "pixelated";
+    this.canvas.style.cssText = `
+      position:absolute; bottom:16px; right:16px;
+      border:2px solid #555; border-radius:4px;
+      image-rendering:pixelated;
+    `;
     document.body.appendChild(this.canvas);
     this.ctx = this.canvas.getContext("2d")!;
+
+    // Full map canvas (offscreen rendering)
+    this.fullMapCanvas = document.createElement("canvas");
+    this.fullMapCtx = this.fullMapCanvas.getContext("2d")!;
+
+    // Zoom on full map
+    const overlay = document.getElementById("fullmap-overlay")!;
+    overlay.addEventListener("wheel", (e) => {
+      if (!this.isFullMap) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.8 : 1.25;
+      this.zoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom * delta));
+      this.renderFullMap();
+    });
+
+    // Drag to pan full map
+    overlay.addEventListener("mousedown", (e) => {
+      this.isDragging = true;
+      this.dragStartX = e.clientX - this.mapOffsetX;
+      this.dragStartY = e.clientY - this.mapOffsetY;
+    });
+    overlay.addEventListener("mousemove", (e) => {
+      if (!this.isDragging) return;
+      this.mapOffsetX = e.clientX - this.dragStartX;
+      this.mapOffsetY = e.clientY - this.dragStartY;
+      this.renderFullMap();
+    });
+    overlay.addEventListener("mouseup", () => { this.isDragging = false; });
   }
 
+  private _world?: World;
+  private _player?: Player;
+
   draw(world: World, player: Player): void {
+    this._world = world;
+    this._player = player;
     const ctx = this.ctx;
     const ptx = player.tileX;
     const pty = player.tileY;
@@ -44,42 +94,56 @@ export class Minimap {
         const tx = ptx + dx;
         const ty = pty + dy;
         const tile = world.getTile(tx, ty);
-
         const sx = (dx + MM_RADIUS) * MM_TILE;
         const sy = (dy + MM_RADIUS) * MM_TILE;
 
-        if (!tile.revealed) {
-          ctx.fillStyle = "#111";
+        if (tile.visibility === "unknown") {
+          ctx.fillStyle = "#000";
         } else {
-          ctx.fillStyle = MINI_COLORS[tile.type] ?? "#888";
+          ctx.fillStyle = TILE_COLORS[tile.type] ?? "#888";
+          ctx.fillRect(sx, sy, MM_TILE, MM_TILE);
+          // Fog tint for non-charted
+          if (tile.visibility === "fog") {
+            ctx.fillStyle = FOG_TINT;
+          } else {
+            ctx.fillStyle = "transparent";
+          }
         }
         ctx.fillRect(sx, sy, MM_TILE, MM_TILE);
       }
     }
 
     // Player dot
-    const px = MM_RADIUS * MM_TILE;
-    const py = MM_RADIUS * MM_TILE;
     ctx.fillStyle = "#fff";
-    ctx.fillRect(px - 2, py - 2, 5, 5);
+    ctx.fillRect(MM_RADIUS * MM_TILE - 2, MM_RADIUS * MM_TILE - 2, 4, 4);
   }
 
-  drawFullMap(world: World, player: Player, screenW: number, screenH: number): void {
-    // Render full map overlay into an offscreen canvas then draw to main
-    const FULL_TILE = 4;
-    const FULL_RADIUS = 80;
+  openFullMap(world: World, player: Player): void {
+    this._world = world;
+    this._player = player;
+    this.isFullMap = true;
+    this.zoom = 1;
+    this.mapOffsetX = 0;
+    this.mapOffsetY = 0;
+    document.getElementById("fullmap-overlay")!.style.display = "flex";
+    this.renderFullMap();
+  }
 
-    // Create overlay
-    const overlay = document.getElementById("fullmap-overlay") as HTMLDivElement;
-    const fc = document.getElementById("fullmap-canvas") as HTMLCanvasElement;
-    const fctx = fc.getContext("2d")!;
+  private renderFullMap(): void {
+    if (!this._world || !this._player) return;
+    const world = this._world;
+    const player = this._player;
 
-    const size = FULL_RADIUS * 2 * FULL_TILE;
-    fc.width = size;
-    fc.height = size;
+    const FULL_TILE = 3;
+    const FULL_RADIUS = 200; // 400 tile radius view
+    const baseSize = FULL_RADIUS * 2 * FULL_TILE;
 
+    this.fullMapCanvas.width = baseSize;
+    this.fullMapCanvas.height = baseSize;
+
+    const fctx = this.fullMapCtx;
     fctx.fillStyle = "#000";
-    fctx.fillRect(0, 0, size, size);
+    fctx.fillRect(0, 0, baseSize, baseSize);
 
     const ptx = player.tileX;
     const pty = player.tileY;
@@ -92,22 +156,57 @@ export class Minimap {
         const sx = (dx + FULL_RADIUS) * FULL_TILE;
         const sy = (dy + FULL_RADIUS) * FULL_TILE;
 
-        fctx.fillStyle = tile.revealed
-          ? (MINI_COLORS[tile.type] ?? "#888")
-          : "#111";
+        if (tile.visibility === "unknown") continue;
+
+        fctx.fillStyle = TILE_COLORS[tile.type] ?? "#888";
         fctx.fillRect(sx, sy, FULL_TILE, FULL_TILE);
+
+        if (tile.visibility === "fog") {
+          fctx.fillStyle = FOG_TINT;
+          fctx.fillRect(sx, sy, FULL_TILE, FULL_TILE);
+        }
       }
     }
 
     // Player dot
     fctx.fillStyle = "#fff";
-    fctx.fillRect(FULL_RADIUS * FULL_TILE - 3, FULL_RADIUS * FULL_TILE - 3, 7, 7);
+    fctx.fillRect(FULL_RADIUS * FULL_TILE - 3, FULL_RADIUS * FULL_TILE - 3, 6, 6);
 
-    overlay.style.display = "flex";
+    // Draw to screen with zoom
+    const fc = document.getElementById("fullmap-canvas") as HTMLCanvasElement;
+    const displaySize = Math.min(window.innerWidth * 0.85, window.innerHeight * 0.8);
+    fc.width = displaySize;
+    fc.height = displaySize;
+    fc.style.width = displaySize + "px";
+    fc.style.height = displaySize + "px";
+
+    const fdc = fc.getContext("2d")!;
+    fdc.imageSmoothingEnabled = false;
+    fdc.fillStyle = "#000";
+    fdc.fillRect(0, 0, displaySize, displaySize);
+
+    const scaledSize = baseSize * this.zoom;
+    const drawX = (displaySize - scaledSize) / 2 + this.mapOffsetX;
+    const drawY = (displaySize - scaledSize) / 2 + this.mapOffsetY;
+
+    // Clip to canvas
+    fdc.save();
+    fdc.beginPath();
+    fdc.rect(0, 0, displaySize, displaySize);
+    fdc.clip();
+    fdc.drawImage(this.fullMapCanvas, drawX, drawY, scaledSize, scaledSize);
+    fdc.restore();
+
+    // Zoom hint
+    fdc.fillStyle = "rgba(0,0,0,0.6)";
+    fdc.fillRect(4, 4, 120, 22);
+    fdc.fillStyle = "#aaa";
+    fdc.font = "12px monospace";
+    fdc.fillText(`Zoom: ${this.zoom.toFixed(1)}x  (scroll)`, 8, 18);
   }
 
   hide(): void {
-    const overlay = document.getElementById("fullmap-overlay") as HTMLDivElement;
-    overlay.style.display = "none";
+    this.isFullMap = false;
+    document.getElementById("fullmap-overlay")!.style.display = "none";
   }
 }

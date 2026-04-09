@@ -5,8 +5,6 @@ const TILE_COLORS = {
     sand: "#c2a84a",
 };
 const WATER_DARK = "#0f4a63";
-const FOG_COLOR = "rgba(0,0,0,0.92)";
-const SEEN_COLOR = "rgba(0,0,0,0.45)";
 export class Renderer {
     constructor(canvas) {
         this.canvas = canvas;
@@ -26,10 +24,8 @@ export class Renderer {
     }
     drawWorld(world, player) {
         const ctx = this.ctx;
-        // Camera: player centered
         const camX = player.pixelX - this.width / 2;
         const camY = player.pixelY - this.height / 2;
-        // Which tiles are visible?
         const startTX = Math.floor(camX / TILE_SIZE) - 1;
         const startTY = Math.floor(camY / TILE_SIZE) - 1;
         const endTX = startTX + Math.ceil(this.width / TILE_SIZE) + 2;
@@ -39,38 +35,35 @@ export class Renderer {
                 const tile = world.getTile(tx, ty);
                 const screenX = Math.floor(tx * TILE_SIZE - camX);
                 const screenY = Math.floor(ty * TILE_SIZE - camY);
-                if (!tile.revealed) {
+                if (tile.visibility === "unknown") {
                     ctx.fillStyle = "#000";
                     ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
                     continue;
                 }
-                // Draw tile
+                // Draw base tile color
                 ctx.fillStyle = TILE_COLORS[tile.type] ?? "#888";
                 ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-                // Water shimmer lines
-                if (tile.type === "water") {
-                    ctx.fillStyle = WATER_DARK;
-                    ctx.fillRect(screenX + 4, screenY + 8, TILE_SIZE - 8, 3);
-                    ctx.fillRect(screenX + 8, screenY + 18, TILE_SIZE - 12, 3);
+                if (tile.visibility === "charted") {
+                    // Full detail
+                    if (tile.type === "water") {
+                        ctx.fillStyle = WATER_DARK;
+                        ctx.fillRect(screenX + 4, screenY + 8, TILE_SIZE - 8, 3);
+                        ctx.fillRect(screenX + 8, screenY + 18, TILE_SIZE - 12, 3);
+                    }
+                    if (tile.type === "grass") {
+                        ctx.fillStyle = "#3d6b34";
+                        ctx.fillRect(screenX + 6, screenY + 6, 2, 2);
+                        ctx.fillRect(screenX + 20, screenY + 18, 2, 2);
+                    }
+                    ctx.fillStyle = "rgba(0,0,0,0.08)";
+                    ctx.fillRect(screenX, screenY, TILE_SIZE, 1);
+                    ctx.fillRect(screenX, screenY, 1, TILE_SIZE);
                 }
-                // Grass detail dots
-                if (tile.type === "grass") {
-                    ctx.fillStyle = "#3d6b34";
-                    ctx.fillRect(screenX + 6, screenY + 6, 2, 2);
-                    ctx.fillRect(screenX + 20, screenY + 18, 2, 2);
+                else {
+                    // Fog of war — greyed out, no detail
+                    ctx.fillStyle = "rgba(0,0,0,0.5)";
+                    ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
                 }
-                // Grid line
-                ctx.fillStyle = "rgba(0,0,0,0.08)";
-                ctx.fillRect(screenX, screenY, TILE_SIZE, 1);
-                ctx.fillRect(screenX, screenY, 1, TILE_SIZE);
-            }
-        }
-        // Fog of war overlay — semi-transparent on seen, opaque on unseen
-        // (already handled above — revealed=false → black)
-        // Add a soft edge around revealed area
-        for (let ty = startTY; ty < endTY; ty++) {
-            for (let tx = startTX; tx < endTX; tx++) {
-                // Already drawn black for unrevealed
             }
         }
     }
@@ -78,7 +71,7 @@ export class Renderer {
         const ctx = this.ctx;
         const cx = this.width / 2;
         const cy = this.height / 2;
-        // Shadow — just under the feet (bottom of sprite)
+        // Shadow just under feet
         ctx.fillStyle = "rgba(0,0,0,0.3)";
         ctx.beginPath();
         ctx.ellipse(cx, cy + 11, 8, 4, 0, 0, Math.PI * 2);

@@ -2,7 +2,7 @@ import { World } from "./world.js";
 import { Player } from "./player.js";
 import { Renderer } from "./renderer.js";
 import { Minimap } from "./minimap.js";
-import { FOG_RADIUS } from "./types.js";
+import { PLAYER_CHART_RADIUS } from "./types.js";
 
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const world = new World();
@@ -13,7 +13,6 @@ const minimap = new Minimap();
 let mapOpen = false;
 let lastTime = 0;
 
-// Resize canvas to window
 function resize(): void {
   renderer.resize(window.innerWidth, window.innerHeight);
 }
@@ -25,7 +24,7 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "m" || e.key === "M") {
     mapOpen = !mapOpen;
     if (mapOpen) {
-      minimap.drawFullMap(world, player, window.innerWidth, window.innerHeight);
+      minimap.openFullMap(world, player);
     } else {
       minimap.hide();
     }
@@ -36,15 +35,24 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
-// Reveal starting area
-world.revealAround(2, 2, FOG_RADIUS);
+// Pre-chart 500 tile radius around spawn (decays to fog after 10s)
+const startNow = performance.now();
+world.preChartStartingArea(500, startNow);
+
+// Also permanently chart tiny spawn zone so player isn't blind
+world.chartAround(2, 2, 12, startNow);
 
 function gameLoop(timestamp: number): void {
-  const dt = Math.min((timestamp - lastTime) / 1000, 0.05); // cap at 50ms
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
   lastTime = timestamp;
 
   player.update(dt, world);
-  world.revealAround(player.tileX, player.tileY, FOG_RADIUS);
+
+  // Chart around player every frame
+  world.chartAround(player.tileX, player.tileY, PLAYER_CHART_RADIUS, timestamp);
+
+  // Update visibility (charted → fog after 10s)
+  world.updateVisibility(timestamp);
 
   renderer.clear();
   renderer.drawWorld(world, player);
