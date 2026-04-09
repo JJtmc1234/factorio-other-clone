@@ -1,9 +1,20 @@
 import { Tile, TileType, CHUNK_SIZE } from "./types.js";
 import { noise2d } from "./noise.js";
 
-const WATER_THRESHOLD = -0.2;  // ~20% water coverage, matches Factorio default
-const SAND_THRESHOLD = -0.14;  // thin sand border around water
-const NOISE_SCALE = 0.06;      // slightly larger lakes, less fragmented
+// One starting lake: centered at tile (30, 20), radius 10
+const LAKE_CENTER_X = 30;
+const LAKE_CENTER_Y = 20;
+const LAKE_RADIUS = 10;
+const LAKE_SAND_RADIUS = LAKE_RADIUS + 2;
+
+// Safe spawn zone — always grass
+const SPAWN_SAFE_RADIUS = 12;
+
+function distToLake(tx: number, ty: number): number {
+  const dx = tx - LAKE_CENTER_X;
+  const dy = ty - LAKE_CENTER_Y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
 
 export class World {
   private chunks: Map<string, Tile[][]> = new Map();
@@ -17,17 +28,24 @@ export class World {
     for (let ty = 0; ty < CHUNK_SIZE; ty++) {
       tiles[ty] = [];
       for (let tx = 0; tx < CHUNK_SIZE; tx++) {
-        const wx = (cx * CHUNK_SIZE + tx) * NOISE_SCALE;
-        const wy = (cy * CHUNK_SIZE + ty) * NOISE_SCALE;
-        const n = noise2d(wx, wy);
+        const worldX = cx * CHUNK_SIZE + tx;
+        const worldY = cy * CHUNK_SIZE + ty;
+
+        const distSpawn = Math.sqrt(worldX * worldX + worldY * worldY);
+        const distL = distToLake(worldX, worldY);
 
         let type: TileType;
-        if (n < WATER_THRESHOLD) type = "water";
-        else if (n < SAND_THRESHOLD) type = "sand";
-        else type = "grass";
 
-        // Ensure spawn area (chunk 0,0) is always land
-        if (cx === 0 && cy === 0 && tx < 5 && ty < 5) type = "grass";
+        if (distSpawn < SPAWN_SAFE_RADIUS) {
+          // Always grass near spawn
+          type = "grass";
+        } else if (distL < LAKE_RADIUS) {
+          type = "water";
+        } else if (distL < LAKE_SAND_RADIUS) {
+          type = "sand";
+        } else {
+          type = "grass";
+        }
 
         tiles[ty][tx] = { type, revealed: false };
       }
