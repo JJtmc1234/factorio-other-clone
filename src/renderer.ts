@@ -93,8 +93,24 @@ export class Renderer {
           ctx.fillStyle = "rgba(0,0,0,0.08)";
           ctx.fillRect(screenX, screenY, TILE_SIZE, 1);
           ctx.fillRect(screenX, screenY, 1, TILE_SIZE);
+          // Draw ore under full detail (charted only)
+          const r = tile.resource;
+          if (r && r.kind === "ore") {
+            ctx.fillStyle = ORE_COLORS[r.ore];
+            ctx.globalAlpha = 0.75;
+            ctx.fillRect(screenX + 2, screenY + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+            ctx.globalAlpha = 1;
+          }
         } else {
           // Fog of war — greyed out, no detail
+          // Still show ore dimly so you remember where patches are
+          const r = tile.resource;
+          if (r && r.kind === "ore") {
+            ctx.fillStyle = ORE_COLORS[r.ore];
+            ctx.globalAlpha = 0.25;
+            ctx.fillRect(screenX + 2, screenY + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+            ctx.globalAlpha = 1;
+          }
           ctx.fillStyle = "rgba(0,0,0,0.5)";
           ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
         }
@@ -149,31 +165,38 @@ export class Renderer {
         const r = tile.resource;
 
         if (r.kind === "ore") {
-          ctx.fillStyle = ORE_COLORS[r.ore];
-          ctx.globalAlpha = 0.75;
-          ctx.fillRect(sx + 2, sy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-          ctx.globalAlpha = 1;
+          // ore already drawn in drawWorld
         } else if (r.kind === "tree") {
+          // 2x2 tile tree sprite
+          const w = TILE_SIZE * 2;
+          const h = TILE_SIZE * 2;
+          ctx.fillStyle = "#1e3d10";
+          ctx.beginPath();
+          ctx.arc(sx + w/2, sy + h/2 + 4, 26, 0, Math.PI*2);
+          ctx.fill();
           ctx.fillStyle = "#2d5a1b";
           ctx.beginPath();
-          ctx.arc(sx + TILE_SIZE/2, sy + TILE_SIZE/2, 10, 0, Math.PI*2);
+          ctx.arc(sx + w/2, sy + h/2, 22, 0, Math.PI*2);
           ctx.fill();
           ctx.fillStyle = "#3d7a27";
           ctx.beginPath();
-          ctx.arc(sx + TILE_SIZE/2 - 3, sy + TILE_SIZE/2 - 3, 7, 0, Math.PI*2);
+          ctx.arc(sx + w/2 - 5, sy + h/2 - 5, 14, 0, Math.PI*2);
           ctx.fill();
         } else if (r.kind === "rock") {
-          ctx.fillStyle = r.label === "Big Sand Rock" ? "#c8b870" : "#888";
+          const huge = r.label === "Huge Rock";
+          const sand = r.label === "Big Sand Rock";
+          // huge: 3x4 tiles, big: 2x2 tiles
+          const rw = huge ? TILE_SIZE * 3 : TILE_SIZE * 2;
+          const rh = huge ? TILE_SIZE * 4 : TILE_SIZE * 2;
+          const cx2 = sx + rw / 2;
+          const cy2 = sy + rh / 2;
+          ctx.fillStyle = sand ? "#c8b870" : (huge ? "#666" : "#888");
           ctx.beginPath();
-          ctx.ellipse(sx + TILE_SIZE/2, sy + TILE_SIZE/2 + 2,
-            r.label === "Huge Rock" ? 13 : 9,
-            r.label === "Huge Rock" ? 10 : 7, 0.3, 0, Math.PI*2);
+          ctx.ellipse(cx2, cy2 + 4, rw * 0.45, rh * 0.35, 0.2, 0, Math.PI*2);
           ctx.fill();
-          ctx.fillStyle = "#555";
+          ctx.fillStyle = sand ? "#e0d090" : (huge ? "#888" : "#aaa");
           ctx.beginPath();
-          ctx.ellipse(sx + TILE_SIZE/2 - 2, sy + TILE_SIZE/2,
-            r.label === "Huge Rock" ? 8 : 5,
-            r.label === "Huge Rock" ? 6 : 4, -0.2, 0, Math.PI*2);
+          ctx.ellipse(cx2 - rw*0.07, cy2 - rh*0.05, rw * 0.35, rh * 0.28, -0.2, 0, Math.PI*2);
           ctx.fill();
         }
       }
